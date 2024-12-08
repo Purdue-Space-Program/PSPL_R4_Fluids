@@ -5,8 +5,6 @@ from CoolProp.CoolProp import PropsSI
 ureg = pint.UnitRegistry()
 
 # constant variables
-fluid = 'helium'
-fluid2 = 'air'
 COPV_vol = 18.1               *(ureg.liter)       # vloume of the COPV
 temp_system = 297             *(ureg.K)           # the ambient temperature
 fillTank_vol = 42.2           *(ureg.liter)       # the volume of the fill tanks
@@ -18,21 +16,21 @@ driveChamber_stroke = 14.567  *(ureg.inch) # temporary placeholder
 gasChamber_vol = 0.1            *(ureg.inch)**3  # temporary placeholder
 
 # inputs
-cfm_air = 12.5   *((ureg.feet)**3 / (ureg.min))   # the volumetric flow rate (cfm)
+cfm_air = 10   *((ureg.feet)**3 / (ureg.min))   # the volumetric flow rate (cfm)
 
 
 print('\n-----Initial condions-----\n')
 
-comp_fact = PropsSI('Z', 'P', airDrive_p.to(ureg.Pa).magnitude, 'T', temp_system.magnitude, fluid)  # finding compressibility factor, not really useful for this code
+comp_fact = PropsSI('Z', 'P', airDrive_p.to(ureg.Pa).magnitude, 'T', temp_system.magnitude, 'helium')  # finding compressibility factor, not really useful for this code
 print(f"The compressibility factor of the air drive is {comp_fact:.2f}")
 
-density_He_fullCOPV = PropsSI('D', 'P', full_COPV_P.to(ureg.Pa).magnitude, 'T', temp_system.magnitude, fluid)   *((ureg.kg) / (ureg.m)**3)  # density of heluim inside the copv
+density_He_fullCOPV = PropsSI('D', 'P', full_COPV_P.to(ureg.Pa).magnitude, 'T', temp_system.magnitude, 'helium')   *((ureg.kg) / (ureg.m)**3)  # density of heluim inside the copv
 print(f"The density of the helium in the COPV when full is {density_He_fullCOPV:.2f}")
 
-density_airDrive = PropsSI('D', 'P', airDrive_p.to(ureg.Pa).magnitude, 'T', temp_system.magnitude, fluid2)   *((ureg.kg) / (ureg.m)**3)  # density of the air being supplied to the pump
+density_airDrive = PropsSI('D', 'P', airDrive_p.to(ureg.Pa).magnitude, 'T', temp_system.magnitude, 'air')   *((ureg.kg) / (ureg.m)**3)  # density of the air being supplied to the pump
 print(f"The density of air drive gas is {density_airDrive:.2f}")
 
-density_HE_fill = PropsSI('D', 'P', start_fillTank_p.to(ureg.Pa).magnitude, 'T', temp_system.magnitude, fluid)   *((ureg.kg) / (ureg.m)**3)  # density of the helium inside the fill tanks (at the starting pressure)
+density_HE_fill = PropsSI('D', 'P', start_fillTank_p.to(ureg.Pa).magnitude, 'T', temp_system.magnitude, 'helium')   *((ureg.kg) / (ureg.m)**3)  # density of the helium inside the fill tanks (at the starting pressure)
 
 
 print('\n\n-----Finding equalization pressure-----\n')
@@ -44,14 +42,14 @@ mass_He_fill = density_HE_fill * fillTank_vol  # intital mass of the helium insi
 print(f"The mass of helium in the fill tank is {mass_He_fill.to_base_units():.4f}")
 
 equal_den = mass_He_fill / (COPV_vol + fillTank_vol)    # finds the density of helium when the tanks are at equilibrium
-equal_p = PropsSI('P', 'D', equal_den.magnitude, 'T', temp_system.magnitude, fluid)    *(ureg.Pa) # uses density at equilibrium to find the equilization pressure
+equal_p = PropsSI('P', 'D', equal_den.magnitude, 'T', temp_system.magnitude, 'helium')    *(ureg.Pa) # uses density at equilibrium to find the equilization pressure
 print(f"The equalization pressure of the system is {equal_p.to(ureg.psi):.2f}")  # equalization pressure is around 3980 psi, the leftover 1000 psi is left to the booster to fill
 
 
 print('\n\n-----Finding the end condtions-----\n')
 
 min_fillTank_d = (mass_He_fill - totalMass_COPV) / fillTank_vol   # the minimum density of heluim inside the fill tank (when the copv is full), will use as a maximum boost pressure needed to generate
-min_fillTank_p = PropsSI('P', 'D', min_fillTank_d.magnitude, 'T', temp_system.magnitude, fluid)   *(ureg.Pa)
+min_fillTank_p = PropsSI('P', 'D', min_fillTank_d.magnitude, 'T', temp_system.magnitude, 'helium')   *(ureg.Pa)
 print(f"The minimum tank pressure is {min_fillTank_p.to(ureg.psi):.4f}")
 mass_He_neededBoost = mass_He_fill - totalMass_COPV
 print(f"The mass of helium need to be boosted by the pump is {mass_He_neededBoost.to_base_units():.4f}")
@@ -101,34 +99,34 @@ print(f"The speed of the piston is {piston_speed.to_base_units():.3f}")
 
 while COPV_mass < totalMass_COPV.to_base_units().magnitude:
     # updating the fill tank values
-    start_entropy = PropsSI('S', 'T', fillTank_temp, 'P', fillTank_p, fluid)
+    start_entropy = PropsSI('S', 'T', fillTank_temp, 'P', fillTank_p, 'helium')
     start_density = fillTank_mass / (fillTank_vol.magnitude + gasChamber_vol.magnitude)
-    fillTank_p = PropsSI('P', 'S', start_entropy, 'D', start_density, fluid)
-    fillTank_temp = PropsSI('T', 'S', start_entropy, 'D', start_density, fluid)
+    fillTank_p = PropsSI('P', 'S', start_entropy, 'D', start_density, 'helium')
+    fillTank_temp = PropsSI('T', 'S', start_entropy, 'D', start_density, 'helium')
     fillTank_mass -= gasChamber_vol.magnitude * start_density
 
     # compressing to COPV pressure, known end pressure and mass doesn't change (gas stays in chamber)
-    chamber_entropy = PropsSI('S', 'T', fillTank_temp, 'P', fillTank_p, fluid)   # these values are same as the fill tank
+    chamber_entropy = PropsSI('S', 'T', fillTank_temp, 'P', fillTank_p, 'helium')   # these values are same as the fill tank
     chamber_mass = start_density * gasChamber_vol.magnitude
-    chamber_temp = PropsSI('T', 'S', chamber_entropy, 'P', COPV_p, fluid)
-    new_chamber_den = PropsSI('D', 'T', chamber_temp, 'P', COPV_p, fluid)
+    chamber_temp = PropsSI('T', 'S', chamber_entropy, 'P', COPV_p, 'helium')
+    new_chamber_den = PropsSI('D', 'T', chamber_temp, 'P', COPV_p, 'helium')
     new_v = chamber_mass / new_chamber_den
     delta_v = gasChamber_vol.magnitude - new_v
     comp_time = delta_v / vol_speed.magnitude
     time += comp_time
 
     # finding the avergae temperature of the COPV + chamber
-    internal_e_chamber = PropsSI('UMASS', 'T', chamber_temp, 'P', COPV_p, fluid) * chamber_mass
-    internal_e_COPV = PropsSI('UMASS', 'T', COPV_temp, 'P', COPV_p, fluid) * COPV_mass
+    internal_e_chamber = PropsSI('UMASS', 'T', chamber_temp, 'P', COPV_p, 'helium') * chamber_mass
+    internal_e_COPV = PropsSI('UMASS', 'T', COPV_temp, 'P', COPV_p, 'helium') * COPV_mass
     total_specific_internal_e = (internal_e_chamber + internal_e_COPV) / (chamber_mass + COPV_mass)
-    comp_temp = PropsSI('T', 'U', total_specific_internal_e, 'P', COPV_p, fluid) # acts as starting temp
-    COPV_den = PropsSI('D', 'T', COPV_temp, 'P', COPV_p, fluid)
+    comp_temp = PropsSI('T', 'U', total_specific_internal_e, 'P', COPV_p, 'helium') # acts as starting temp
+    COPV_den = PropsSI('D', 'T', COPV_temp, 'P', COPV_p, 'helium')
 
     # compressing He into COPV
-    upStream_entropy = PropsSI('S', 'T', comp_temp, 'P', COPV_p, fluid)
+    upStream_entropy = PropsSI('S', 'T', comp_temp, 'P', COPV_p, 'helium')
     new_density = (new_chamber_den * new_v + COPV_den * COPV_vol.magnitude) / (new_v + COPV_vol.magnitude)
-    COPV_temp_new = PropsSI('T', 'S', upStream_entropy, 'D', new_density, fluid)
-    COPV_p_new = PropsSI('P', 'S', upStream_entropy, 'D', new_density, fluid)
+    COPV_temp_new = PropsSI('T', 'S', upStream_entropy, 'D', new_density, 'helium')
+    COPV_p_new = PropsSI('P', 'S', upStream_entropy, 'D', new_density, 'helium')
     delta_v = new_v
     comp_time = delta_v / vol_speed.magnitude
     time += comp_time
@@ -136,7 +134,7 @@ while COPV_mass < totalMass_COPV.to_base_units().magnitude:
     # updateing COPV values
     COPV_p = COPV_p_new
     COPV_temp = COPV_temp_new
-    density_COPV = PropsSI('D', 'P', COPV_p_new, 'T', COPV_temp_new, fluid)
+    density_COPV = PropsSI('D', 'P', COPV_p_new, 'T', COPV_temp_new, 'helium')
     mass_moved_COPV = delta_v * density_COPV
     COPV_mass += mass_moved_COPV
 
