@@ -11,9 +11,9 @@ fillTank_vol = 42.2           *(ureg.liter)       # the volume of the fill tanks
 start_fillTank_p = 6000       *(ureg.psi)         # the pressure of the fill tanks
 full_COPV_P = 4935            *(ureg.psi)         # the final pressure of the copv
 airDrive_p = 100              *(ureg.psi)         # pressure of the air drive gas, or the pressure that is supplied by the pump
-driveChamber_vol = 6.2        *(ureg.inch)**3     # the volume of the drive gas chamber
-driveChamber_stroke = 14.567  *(ureg.inch) # temporary placeholder
-gasChamber_vol = 0.1            *(ureg.inch)**3  # temporary placeholder
+driveChamber_vol = 3.1        *(ureg.inch)**3     # the volume of the drive gas chamber (per cycle is 6.2, so per stroke is half)
+driveChamber_stroke = 0.1578  *(ureg.inch) # temporary placeholder
+gasChamber_vol = 0.05         *(ureg.inch)**3  # temporary placeholder
 
 # inputs
 cfm_air = 10   *((ureg.feet)**3 / (ureg.min))   # the volumetric flow rate (cfm)
@@ -80,6 +80,7 @@ fillTank_temp = chamber_temp
 COPV_vol = COPV_vol.to((ureg.m)**3)
 time = 0   # time in seconds
 comp_time = 0
+strokes = 0
 
 COPV_mass = equal_den.magnitude * COPV_vol.magnitude
 fillTank_mass = equal_den.magnitude * fillTank_vol.magnitude
@@ -90,12 +91,19 @@ print(f"The mass flow rate of air into the pump is {mass_flowRate:.5f}")
 air_R_val = 287.05   *((ureg.J) / ((ureg.kg) * (ureg.K)))
 He_R_val = 2077.1    *((ureg.J) / ((ureg.kg) * (ureg.K)))
 
-vol_speed = mass_flowRate * air_R_val * temp_system / airDrive_p   # change in volume
-print(f"The change in volume is {vol_speed.to_base_units():.5f}")
+vol_speed_air = mass_flowRate * air_R_val * temp_system / airDrive_p   # change in volume
+vol_speed_air = vol_speed_air.to_base_units()
+print(f"The change in volume of the air is {vol_speed_air:.5f}")
 
-piston_area = driveChamber_vol.to_base_units() / driveChamber_stroke.to_base_units()
-piston_speed = vol_speed / piston_area
+piston_area_air = driveChamber_vol.to_base_units() / driveChamber_stroke.to_base_units()
+piston_speed = vol_speed_air / piston_area_air
 print(f"The speed of the piston is {piston_speed.to_base_units():.3f}")
+
+piston_area_He = gasChamber_vol / driveChamber_stroke
+vol_speed_He = piston_area_He * piston_speed
+print(f"The change in volume of the helium chamber is {vol_speed_He.to_base_units():.5f}")
+vol_speed_He = vol_speed_He.to_base_units()
+
 
 while COPV_mass < totalMass_COPV.to_base_units().magnitude:
     # updating the fill tank values
@@ -112,7 +120,7 @@ while COPV_mass < totalMass_COPV.to_base_units().magnitude:
     new_chamber_den = PropsSI('D', 'T', chamber_temp, 'P', COPV_p, 'helium')
     new_v = chamber_mass / new_chamber_den
     delta_v = gasChamber_vol.magnitude - new_v
-    comp_time = delta_v / vol_speed.magnitude
+    comp_time = delta_v / vol_speed_He.magnitude
     time += comp_time
 
     # finding the avergae temperature of the COPV + chamber
@@ -128,17 +136,18 @@ while COPV_mass < totalMass_COPV.to_base_units().magnitude:
     COPV_temp_new = PropsSI('T', 'S', upStream_entropy, 'D', new_density, 'helium')
     COPV_p_new = PropsSI('P', 'S', upStream_entropy, 'D', new_density, 'helium')
     delta_v = new_v
-    comp_time = delta_v / vol_speed.magnitude
+    comp_time = delta_v / vol_speed_He.magnitude
     time += comp_time
-
-    # updateing COPV values
     COPV_p = COPV_p_new
     COPV_temp = COPV_temp_new
     density_COPV = PropsSI('D', 'P', COPV_p_new, 'T', COPV_temp_new, 'helium')
     mass_moved_COPV = delta_v * density_COPV
     COPV_mass += mass_moved_COPV
+    strokes += 1
 
 
 time = time  *(ureg.s)
 print(f"\nThe total time to fill the COPV is {time}")
 print(f"The mass in the COPV is {COPV_mass:.5f}")
+print(f"The number of strokes is {strokes}")
+# just as a note, the fill time looks directly proportional to the input cfm
